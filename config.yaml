@@ -1,0 +1,6 @@
+bot_token: #bot token
+forum_channel_id: #id of forum channel
+max_players: 6 #number of players allowed in the game
+database_path: 'bot_database.db' #database name for persistent data
+whitelisted_users:
+  - 333333333333333333 #Discord ID
