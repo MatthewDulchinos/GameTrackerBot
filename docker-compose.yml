@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./bot_database.db:/app/bot_database.db  # Mount the database file directly
+    environment:
+      - DATABASE_PATH=/app/bot_database.db  # Path to the database inside the container

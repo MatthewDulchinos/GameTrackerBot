@@ -38,7 +38,7 @@ async def handle_private_message(message, client, FORUM_CHANNEL_ID, DB_PATH, WHI
 
 
 # Function to handle "add me", "remove me", etc.
-async def handle_thread_message(message, client, MAX_PLAYERS, DB_PATH):
+async def handle_thread_message(message, client, MAX_PLAYERS, DB_PATH, WHITELISTED_USERS):
     user_mention = message.author.mention
     thread_id = message.channel.id
 
@@ -50,16 +50,52 @@ async def handle_thread_message(message, client, MAX_PLAYERS, DB_PATH):
     elif "*removeme" in message.content.lower():
         await remove_user_from_thread(message, user_mention, players, wait_list, backups, streamers, original_content, DB_PATH)
     elif "*backupme" in message.content.lower():
-        await add_user_to_backups(message, user_mention, players, backups, original_content, DB_PATH)
+        await add_user_to_backups(message, user_mention, players, wait_list, backups, streamers, original_content, DB_PATH)
     elif "*streamme" in message.content.lower():
-        await add_user_to_streamers(message, user_mention, streamers, original_content, DB_PATH)
+        await add_user_to_streamers(message, user_mention, players, wait_list, backups, streamers, original_content, DB_PATH)
     elif "*unstreamme" in message.content.lower():
-        await remove_user_from_streamers(message, user_mention, streamers, original_content, DB_PATH)
-
+        await remove_user_from_streamers(message, user_mention, players, wait_list, backups, streamers, original_content, DB_PATH)
+    elif "*edit" in message.content.lower():
+        await edit_original_message(message, user_mention, players, wait_list, backups, streamers, original_content, DB_PATH, WHITELISTED_USERS)
+    elif "*modadd" in message.content.lower():
+        if message.author.id in WHITELISTED_USERS:
+            await add_user_to_thread(message, message.content.replace("*modadd ", "", 1), players, wait_list, backups, streamers, original_content, MAX_PLAYERS, DB_PATH)
+        else:
+            await message.channel.send(f"{user_mention} are not permitted to use mod controls!")
+    elif "*modremove" in message.content.lower():
+        if message.author.id in WHITELISTED_USERS:
+            await remove_user_from_thread(message, message.content.replace("*modremove ", "", 1), players, wait_list, backups, streamers, original_content, DB_PATH)
+        else:
+            await message.channel.send(f"{user_mention} are not permitted to use mod controls!")
+    elif "*modbackup" in message.content.lower():
+        if message.author.id in WHITELISTED_USERS:
+            await add_user_to_backups(message, message.content.replace("*modbackup ", "", 1), players, wait_list, backups, streamers, original_content, DB_PATH)
+        else:
+            await message.channel.send(f"{user_mention} are not permitted to use mod controls!")
+    elif "*modstream" in message.content.lower():
+        if message.author.id in WHITELISTED_USERS:
+            await add_user_to_streamers(message, message.content.replace("*modstream ", "", 1), players, wait_list, backups, streamers, original_content, DB_PATH)
+        else:
+            await message.channel.send(f"{user_mention} are not permitted to use mod controls!")
+    elif "*modunstream" in message.content.lower():
+        if message.author.id in WHITELISTED_USERS:
+            await remove_user_from_streamers(message, message.content.replace("*modunstream ", "", 1), players, wait_list, backups, streamers, original_content, DB_PATH)
+        else:
+            await message.channel.send(f"{user_mention} are not permitted to use mod controls!")
     # Update the original post
     await update_original_post(client, thread_id, players, wait_list, backups, streamers, original_content, DB_PATH)
 
+# Add user to streamers
+async def edit_original_message(message, user_mention, players, wait_list, backups, streamers, original_content, db_path, WHITELISTED_USERS):
+    edited_content = message.content.replace("*edit ", "", 1)
+    if message.author.id in WHITELISTED_USERS:
+        await message.channel.send(f"{user_mention}, edited post!")
+        # Update the database
+        update_thread_db(db_path, message.channel.id, players, wait_list, backups, streamers, edited_content)
+    else:
+        await message.channel.send(f"{user_mention} are not permitted to edit posts!")
 
+    
 
 async def add_user_to_thread(message, user_mention, players, wait_list, backups, streamers, original_content, MAX_PLAYERS, DB_PATH):
     if user_mention in players or user_mention in wait_list:
@@ -103,7 +139,7 @@ async def remove_user_from_thread(message, user_mention, players, wait_list, bac
 
 
 # Add user to backups
-async def add_user_to_backups(message, user_mention, players, backups, original_content, DB_PATH):
+async def add_user_to_backups(message, user_mention, players, wait_list, backups, streamers, original_content, DB_PATH):
     if user_mention in backups:
         await message.channel.send(f"{user_mention}, you are already in the backups list!")
     else:
@@ -115,23 +151,23 @@ async def add_user_to_backups(message, user_mention, players, backups, original_
         await message.channel.send(f"{user_mention} has been added to the backups list!")
 
     # Update the database
-    update_thread_db(DB_PATH, message.channel.id, players, [], backups, [], original_content)
+    update_thread_db(DB_PATH, message.channel.id, players, wait_list, backups, streamers, original_content)
 
 # Remove user from streamers
-async def remove_user_from_backups(message, user_mention, streamers, original_content, db_path):
-    if user_mention in streamers:
+async def remove_user_from_backups(message, user_mention, players, wait_list, backups, streamers, original_content, db_path):
+    if user_mention in backups:
         streamers.remove(user_mention)
         await message.channel.send(f"{user_mention} has been removed from the backups list!")
     else:
         await message.channel.send(f"{user_mention}, you are not in the backups list!")
 
     # Update the database
-    update_thread_db(db_path, message.channel.id, [], [], [], streamers, original_content)
+    update_thread_db(db_path, message.channel.id, players, wait_list, backups, streamers, original_content)
 
 
 
 # Add user to streamers
-async def add_user_to_streamers(message, user_mention, streamers, original_content, db_path):
+async def add_user_to_streamers(message, user_mention, players, wait_list, backups, streamers, original_content, db_path):
     if user_mention in streamers:
         await message.channel.send(f"{user_mention}, you are already in the streamers list!")
     else:
@@ -139,10 +175,10 @@ async def add_user_to_streamers(message, user_mention, streamers, original_conte
         await message.channel.send(f"{user_mention} has been added to the streamers list!")
 
     # Update the database
-    update_thread_db(db_path, message.channel.id, [], [], [], streamers, original_content)
+    update_thread_db(db_path, message.channel.id, players, wait_list, backups, streamers, original_content)
 
 # Remove user from streamers
-async def remove_user_from_streamers(message, user_mention, streamers, original_content, db_path):
+async def remove_user_from_streamers(message, user_mention, players, wait_list, backups, streamers, original_content, db_path):
     if user_mention in streamers:
         streamers.remove(user_mention)
         await message.channel.send(f"{user_mention} has been removed from the streamers list!")
@@ -150,7 +186,7 @@ async def remove_user_from_streamers(message, user_mention, streamers, original_
         await message.channel.send(f"{user_mention}, you are not in the streamers list!")
 
     # Update the database
-    update_thread_db(db_path, message.channel.id, [], [], [], streamers, original_content)
+    update_thread_db(db_path, message.channel.id, players, wait_list, backups, streamers, original_content)
 
 
 async def update_original_post(client, thread_id, players, wait_list, backups, streamers, original_content, DB_PATH):
