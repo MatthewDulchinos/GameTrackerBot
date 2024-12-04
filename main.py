@@ -31,7 +31,7 @@ async def on_message(message):
         return
 
     if isinstance(message.channel, discord.DMChannel):
-        await handle_private_message(message, client, FORUM_CHANNEL_ID, DB_PATH, WHITELISTED_USERS)
+        await handle_private_message(message, client, FORUM_CHANNEL_ID, DB_PATH, WHITELISTED_USERS, MAX_PLAYERS)
     elif isinstance(message.channel, discord.Thread):
         await handle_thread_message(message, client, MAX_PLAYERS, DB_PATH, WHITELISTED_USERS)
 
