@@ -1,14 +1,73 @@
 import discord
 from db_manager import update_thread_db, get_thread_info, query_db
 
-BOT_COMMANDS = "\n\nTo use me, use the following commands, including the \*:\n**\*addme** - adds you to the list of players\n**\*removeme** - removes you from the list of players\n**\*backupme** - adds you to the list of backup players, be sure to say **\*addme** once you know you can play\n**\*streamme** - adds you to the list of streamers\n**\*unstreamme** -removes you from the list of streamers"
+
+BOT_COMMANDS = "\n".join(["\n\nTo use me, use the buttons below, or one of following commands, including the \*:",
+                          "**`*addme`** - adds you to the list of players",
+                          "**`*removeme`** - removes you from the list of players",
+                          "**`*backupme`** - adds you to the list of backup players, be sure to say `*addme` once you know you can play",
+                          "**`*streamme`** - adds you to the list of streamers",
+                          "**`*unstreamme`** -removes you from the list of streamers"])
+
+class SignUpView(discord.ui.View):
+    def __init__(self, thread_id, max_players: int, db_path, client):
+        super().__init__(timeout=None)
+        self.thread_id = thread_id
+        self.max_players = max_players
+        self.db_path = db_path
+        self.client = client
+
+    @discord.ui.button(label="Add Me", style=discord.ButtonStyle.green, row=0)
+    async def addme(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
+        user_mention = interaction.user.mention
+        players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
+        await add_user_to_thread(message, user_mention, players, wait_list, backups, streamers, original_content, self.max_players, self.db_path)
+        await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
+
+    @discord.ui.button(label="Back-Up Me", style=discord.ButtonStyle.blurple, row=0)
+    async def backupme(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
+        user_mention = interaction.user.mention
+        players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
+        await add_user_to_backups(message, user_mention, players, backups, original_content, self.db_path)
+        await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
+
+    @discord.ui.button(label="Remove Me", style=discord.ButtonStyle.red, row=0)
+    async def removeme(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
+        user_mention = interaction.user.mention
+        players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
+        await remove_user_from_thread(message, user_mention, players, wait_list, backups, streamers, original_content, self.db_path)
+        await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
+
+    @discord.ui.button(label="Stream Me", style=discord.ButtonStyle.grey, row=1)
+    async def streamme(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
+        user_mention = interaction.user.mention
+        players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
+        await add_user_to_streamers(message, user_mention, streamers, original_content, self.db_path)
+        await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
+
+    @discord.ui.button(label="Unstream Me", style=discord.ButtonStyle.grey, row=1)
+    async def unstreamme(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        message = interaction.message
+        user_mention = interaction.user.mention
+        players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
+        await remove_user_from_streamers(message, user_mention, streamers, original_content, self.db_path)
+        await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
 
 # Function to check if the user has the required role
 def user_has_role(member, required_role_id):
     return any(role.id == required_role_id for role in member.roles)
 
 # Function to handle private messages for thread creation
-async def handle_private_message(message, client, FORUM_CHANNEL_ID, DB_PATH, WHITELISTED_USERS):
+async def handle_private_message(message, client, FORUM_CHANNEL_ID, DB_PATH, WHITELISTED_USERS, MAX_PLAYERS):
     if message.content.startswith("create thread:"):
         if message.author.id in WHITELISTED_USERS:
             try:
@@ -22,6 +81,7 @@ async def handle_private_message(message, client, FORUM_CHANNEL_ID, DB_PATH, WHI
                         content=thread_content + BOT_COMMANDS
                     ))[0]
                     print(f'Created thread with ID: {thread.id}')
+                    await thread.send(view=SignUpView(thread.id, MAX_PLAYERS, DB_PATH, client))
                     
                     # Initialize player list, waitlist, backups, and streamers in the database
                     update_thread_db(DB_PATH, thread.id, [], [], [], [], thread_content)
