@@ -32,7 +32,7 @@ class SignUpView(discord.ui.View):
         message = interaction.message
         user_mention = interaction.user.mention
         players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
-        await add_user_to_backups(message, user_mention, players, backups, original_content, self.db_path)
+        await add_user_to_backups(message, user_mention, players, wait_list, backups, streamers, original_content, self.db_path)
         await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
 
     @discord.ui.button(label="Remove Me", style=discord.ButtonStyle.red, row=0)
@@ -50,7 +50,7 @@ class SignUpView(discord.ui.View):
         message = interaction.message
         user_mention = interaction.user.mention
         players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
-        await add_user_to_streamers(message, user_mention, streamers, original_content, self.db_path)
+        await add_user_to_streamers(message, user_mention, players, wait_list, backups, streamers, original_content, self.db_path)
         await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
 
     @discord.ui.button(label="Unstream Me", style=discord.ButtonStyle.grey, row=1)
@@ -59,7 +59,7 @@ class SignUpView(discord.ui.View):
         message = interaction.message
         user_mention = interaction.user.mention
         players, wait_list, backups, streamers, original_content = get_thread_info(self.db_path, self.thread_id)
-        await remove_user_from_streamers(message, user_mention, streamers, original_content, self.db_path)
+        await remove_user_from_streamers(message, user_mention, players, wait_list, backups, streamers, original_content, self.db_path)
         await update_original_post(self.client, self.thread_id, players, wait_list, backups, streamers, original_content, self.db_path)
 
 # Function to check if the user has the required role
